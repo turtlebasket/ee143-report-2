@@ -1,0 +1,2 @@
+Device 2A resistance: 1250.13 Ω
+Device 2B resistance: 494.83 Ω

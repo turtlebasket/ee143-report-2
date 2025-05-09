@@ -27,12 +27,30 @@ for file in filenames:
 
     df = pd.DataFrame(data_values, columns=["Current", "Voltage"])
 
-    # R = V/I = 1/(I/V)
-    slope, _ = polyfit(df["Voltage"], df["Current"], 1)
-    resistance = 1 / slope
+    voltage_diff = df["Voltage"].diff().abs()
+    threshold = voltage_diff.mean() + 2 * voltage_diff.std()
+    transition_points = voltage_diff[voltage_diff > threshold].index
+    start_idx = transition_points[0]
+    end_idx = transition_points[-1]
+    transition_data = df.iloc[start_idx : end_idx + 1]
+    slope, _ = polyfit(transition_data["Current"], transition_data["Voltage"], 1)
+    resistance = slope
+
+    info = f"Device {device} resistance: {resistance:.2f} Ω"
+    print(info)
+    with open("calcs/resistors-4point.txt", "a") as f:
+        f.write(f"{info}\n")
 
     plt.figure(figsize=(10, 5))
-    plt.plot(df["Current"], df["Voltage"], "-", label=f"IV Sweep")
+    plt.plot(df["Current"], df["Voltage"], "-", label="IV Sweep")
+    plt.plot(
+        transition_data["Current"],
+        transition_data["Voltage"],
+        "r-",
+        label="Transition Region",
+        linewidth=2,
+    )
+
     plt.xlabel("Current $I$ [A]")
     plt.ylabel("Voltage $V$ [V]")
     plt.grid(True)

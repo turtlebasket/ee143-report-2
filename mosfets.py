@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 
+mosfet_characteristic_values = {}
 data_files = glob.glob("data/MOSFET*.csv")
 
 # for labels - ordered in secondary "sweep" step direction
@@ -95,6 +96,32 @@ for file in data_files:
         if data_values:
             df = pd.DataFrame(data_values, columns=["Voltage", "Current"])
 
+            if meas_num == "2":
+                # I_OFF I_ON
+                i_off = df[abs(df["Voltage"]) < 0.1]["Current"].iloc[0] * 1e6
+                i_on = df[df["Voltage"] == df["Voltage"].max()]["Current"].iloc[0] * 1e6
+
+                # V_TH (region w/ greatest rate of change)
+                di_dv = np.diff(df["Current"]) / np.diff(df["Voltage"])
+                max_slope_idx = np.argmax(di_dv)
+                # prefer higher of x-coords
+                v_th = df["Voltage"].iloc[max_slope_idx + 1]
+
+                # Calculate I_ON/I_OFF ratio
+                ion_ioff_ratio = i_on / i_off
+
+                print(f"I_OFF = {i_off:.2f} µA")
+                print(f"I_ON = {i_on:.2f} µA")
+                print(f"V_TH = {v_th:.2f} V")
+                print(f"I_ON/I_OFF = {ion_ioff_ratio:.2f}")
+
+                mosfet_characteristic_values[section] = {
+                    "i_off": i_off,
+                    "i_on": i_on,
+                    "v_th": v_th,
+                    "ion_ioff_ratio": ion_ioff_ratio,
+                }
+
             plot_iv_curves(df["Voltage"].values, df["Current"].values, plot_title)
             plt.savefig(plot_filename)
             plt.close()
@@ -117,3 +144,23 @@ for file in data_files:
 
     except Exception as e:
         print(f"Error processing {file}: {str(e)}")
+
+if mosfet_characteristic_values:
+    os.makedirs("calcs", exist_ok=True)
+    with open("calcs/mosfets.txt", "w") as f:
+
+        def sort_key(s):
+            num = "".join(c for c in s if c.isdigit())
+            alpha = "".join(c for c in s if c.isalpha())
+            return (int(num), alpha)
+
+        for section in sorted(mosfet_characteristic_values.keys(), key=sort_key):
+            f.write(f"\nMOSFET {section}\n")
+            f.write(
+                f"I_OFF = {mosfet_characteristic_values[section]['i_off']:.2f} µA\n"
+            )
+            f.write(f"I_ON = {mosfet_characteristic_values[section]['i_on']:.2f} µA\n")
+            f.write(f"V_TH = {mosfet_characteristic_values[section]['v_th']:.2f} V\n")
+            f.write(
+                f"I_ON/I_OFF = {mosfet_characteristic_values[section]['ion_ioff_ratio']:.2f}\n"
+            )
