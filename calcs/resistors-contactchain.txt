@@ -1,0 +1,2 @@
+Device 2C: 67.16 Ω
+Device 2D: 141.65 Ω

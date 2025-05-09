@@ -5,8 +5,10 @@ import matplotlib.pyplot as plt
 
 filename = "data/MOSFET MEAS2 [(9) _14_; 4_8_2025 11_37_24 AM].csv"
 
+drain_voltages = [5, 10, 15]
 
-def plot_inverter_curves(voltage, output, threshold=0.1):
+
+def plot_inverter_curves(voltage, output, threshold=2.0):
     traces_v = []
     traces_out = []
     curr_v_trace = []
@@ -16,8 +18,13 @@ def plot_inverter_curves(voltage, output, threshold=0.1):
     curr_out_trace.append(output[0])
 
     for i in range(1, len(voltage)):
-        if abs(voltage[i] + 5) < threshold:  # detect reset to -5V
+        # Detect when voltage jumps backwards significantly
+        if voltage[i] < voltage[i - 1] - threshold:
             if curr_v_trace:  # save current trace if it exists
+                # DEBUG
+                print(
+                    f"split @ index {i}, voltage jump: {voltage[i-1]} -> {voltage[i]}"
+                )
                 traces_v.append(curr_v_trace)
                 traces_out.append(curr_out_trace)
                 curr_v_trace = []
@@ -32,12 +39,11 @@ def plot_inverter_curves(voltage, output, threshold=0.1):
 
     plt.figure(figsize=(10, 5))
     for idx, (v, out) in enumerate(zip(traces_v, traces_out)):
-        # Get approximate vdd from max output voltage
-        vdd = max(out)
-        plt.plot(v, out, "-", label=f"VDD ≈ {vdd:.1f}V")
+        label = f"$V_D$ = {drain_voltages[idx]}V"
+        plt.plot(v, out, "-", label=label)
 
-    plt.xlabel("Input Voltage (V)")
-    plt.ylabel("Output Voltage (V)")
+    plt.xlabel("Input Voltage $V$ [V]")
+    plt.ylabel("Output Voltage $V$ [V]")
     plt.grid(True)
     plt.title("Inverter Transfer Characteristic - Device 14")
     plt.legend()

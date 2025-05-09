@@ -7,8 +7,12 @@ import re
 
 data_files = glob.glob("data/MOSFET*.csv")
 
+# for labels - ordered in secondary "sweep" step direction
+meas1_gate_voltages = [0, 1, 2, 3, 4, 5]
+meas2_bias_voltages = [0, -1, -2]
 
-def plot_iv_curves(voltage, current, threshold=0.1):
+
+def plot_iv_curves(voltage, current, plot_title, threshold=0.1, log_scale=False):
     traces_v = []
     traces_i = []
     curr_v_trace = []
@@ -37,12 +41,23 @@ def plot_iv_curves(voltage, current, threshold=0.1):
     # plot each trace separately
     plt.figure()
     for idx, (v, i) in enumerate(zip(traces_v, traces_i)):
-        plt.plot(v, i, "-", label=f"Sweep {idx+1}")
+        # (select based on measurement number)
+        if meas_num == "1":
+            label = f"$V_G$ = {meas1_gate_voltages[idx]}V"
+            xlabel = "Drain Voltage $V_D$ [V]"
+            ylabel = "Drain Current $I_D$ [A]"
+        else:
+            label = f"$V_B$ = {meas2_bias_voltages[idx]}V"
+            xlabel = "Gate Voltage $V_G$ [V]"
+            ylabel = "Drain Current $I_D$ [A]"
+            if log_scale:
+                plt.yscale("log")
+        plt.plot(v, i, "-", label=label)
 
-    plt.xlabel("Voltage (V)")
-    plt.ylabel("Current (A)")
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     plt.grid(True)
-    plt.title(f"Device ({section}) - Measurement {meas_num}")
+    plt.title(plot_title + (" (log scale)" if log_scale else ""))
     plt.legend()
     plt.tight_layout()
 
@@ -57,7 +72,7 @@ for file in data_files:
         section = match.group(2)
         meas_num = match.group(3)
         plot_filename = f"figures/{section}-meas{meas_num}.png"
-        plot_title = f"Device ({section}) - Measurement {meas_num}"
+        plot_title = f"MOSFET {section} - Measurement {meas_num}"
     else:
         print(f"Could not parse filename pattern: {filename}")
         continue
@@ -80,10 +95,22 @@ for file in data_files:
         if data_values:
             df = pd.DataFrame(data_values, columns=["Voltage", "Current"])
 
-            plot_iv_curves(df["Voltage"].values, df["Current"].values)
+            plot_iv_curves(df["Voltage"].values, df["Current"].values, plot_title)
             plt.savefig(plot_filename)
             plt.close()
             print(f"Saved plot as: {plot_filename}")
+
+            if meas_num == "2":
+                plot_iv_curves(
+                    df["Voltage"].values,
+                    df["Current"].values,
+                    plot_title,
+                    log_scale=True,
+                )
+                log_filename = plot_filename.replace(".png", "-logscale.png")
+                plt.savefig(log_filename)
+                plt.close()
+                print(f"Saved log scale plot as: {log_filename}")
 
         else:
             print(f"No valid data found in {file}")

@@ -1,5 +1,6 @@
 # devices 2A, 2B
 
+from numpy import polyfit
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -26,14 +27,14 @@ for file in filenames:
 
     df = pd.DataFrame(data_values, columns=["Current", "Voltage"])
 
-    resistance = abs(df["Voltage"].iloc[-1] - df["Voltage"].iloc[0]) / abs(
-        df["Current"].iloc[-1] - df["Current"].iloc[0]
-    )
+    # R = V/I = 1/(I/V)
+    slope, _ = polyfit(df["Voltage"], df["Current"], 1)
+    resistance = 1 / slope
 
     plt.figure(figsize=(10, 5))
-    plt.plot(df["Current"], df["Voltage"], "-", label=f"R = {resistance:.2f} Ω")
-    plt.xlabel("Current (A)")
-    plt.ylabel("Voltage (V)")
+    plt.plot(df["Current"], df["Voltage"], "-", label=f"IV Sweep")
+    plt.xlabel("Current $I$ [A]")
+    plt.ylabel("Voltage $V$ [V]")
     plt.grid(True)
     plt.title(f"4-Point Resistor Measurement - Device {device}")
     plt.legend()

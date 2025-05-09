@@ -2,11 +2,14 @@
 
 import pandas as pd
 import matplotlib.pyplot as plt
+from numpy import polyfit
 
 filenames = [
     "data/I_V Sweep [(8) 2C light off; 4_1_2025 10_40_23 AM].csv",
     "data/I_V Sweep [(10) 2D light off; 4_1_2025 10_41_37 AM].csv",
 ]
+
+device_resistances = {}
 
 for file in filenames:
     device = "2C" if "2C" in file else "2D"
@@ -26,12 +29,13 @@ for file in filenames:
 
     df = pd.DataFrame(data_values, columns=["Voltage", "Current"])
 
-    resistance = abs(df["Current"].iloc[-1] - df["Current"].iloc[0]) / abs(
-        df["Voltage"].iloc[-1] - df["Voltage"].iloc[0]
-    )
+    # R = V/I = 1/(I/V)
+    slope, _ = polyfit(df["Voltage"], df["Current"], 1)
+    resistance = 1 / slope
+    device_resistances[device] = resistance
 
     plt.figure(figsize=(10, 5))
-    plt.plot(df["Voltage"], df["Current"], "-", label=f"R = {resistance:.2f} Ω")
+    plt.plot(df["Voltage"], df["Current"], "-", label=f"IV Sweep")
     plt.xlabel("Voltage (V)")
     plt.ylabel("Current (A)")
     plt.grid(True)
@@ -41,3 +45,7 @@ for file in filenames:
 
     plt.savefig(f"figures/{device.upper()}-contactchain-IV.png")
     plt.close()
+
+with open("calcs/resistors-contactchain.txt", "w") as f:
+    for device, resistance in device_resistances.items():
+        f.write(f"Device {device}: {resistance:.2f} Ω\n")
